@@ -39,6 +39,7 @@ app.use("/api/auth", require("./routes/auth.routes"));
 app.use("/api/books", require("./routes/book.routes"));
 app.use("/api/admin", require("./routes/admin.book.routes"));
 app.use("/api/orders", require("./routes/order.routes"));
+app.use("/api/contact", require("./routes/contact.routes"));
 
 /* ================= GLOBAL ERROR (CORS) ================= */
 app.use((err, req, res, next) => {
