@@ -4,15 +4,17 @@ const path = require("path");
 
 const app = express();
 
-/* ================= CORS (PRODUCTION SAFE) ================= */
+/* ================= CORS (PRODUCTION + LOCAL SAFE) ================= */
 const allowedOrigins = [
-  "http://localhost:3000", // local frontend
+  "http://localhost:3000",
+  "https://sushodh-publisher-frontend.vercel.app",
+  "https://sushodh.com", // existing site (safe)
 ];
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      // allow server-to-server / Postman / mobile apps
+      // allow server-to-server / Postman / curl
       if (!origin) return callback(null, true);
 
       if (allowedOrigins.includes(origin)) {
@@ -31,8 +33,7 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-/* ================= STATIC FILES ================= */
-app.use("/uploads", express.static(path.resolve("uploads")));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 /* ================= ROUTES ================= */
 app.use("/api/auth", require("./routes/auth.routes"));
