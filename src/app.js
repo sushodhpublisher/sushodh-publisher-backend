@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const fs = require("fs");
 
 const app = express();
 
@@ -8,7 +9,7 @@ const app = express();
 const allowedOrigins = [
   "http://localhost:3000",
   "https://sushodh-publisher-frontend.vercel.app",
-  "https://sushodh.com", // existing site (safe)
+  "https://sushodh.com",
 ];
 
 app.use(
@@ -33,7 +34,22 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+/* ================= STATIC FILES (FINAL BULLETPROOF FIX) ================= */
+
+const possibleUploadPaths = [
+  path.join(process.cwd(), "uploads"),
+  path.join(__dirname, "uploads"),
+  path.join(__dirname, "..", "uploads"),
+];
+
+const uploadPath = possibleUploadPaths.find((p) => fs.existsSync(p));
+
+if (!uploadPath) {
+  console.error("❌ uploads folder NOT FOUND in any expected location");
+} else {
+  console.log("Serving uploads from:", uploadPath);
+  app.use("/uploads", express.static(uploadPath));
+}
 
 /* ================= ROUTES ================= */
 app.use("/api/auth", require("./routes/auth.routes"));
