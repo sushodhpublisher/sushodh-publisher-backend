@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
+const multer = require("multer");
 
 const app = express();
 
@@ -34,8 +35,7 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-/* ================= STATIC FILES (FINAL BULLETPROOF FIX) ================= */
-
+/* ================= STATIC FILES (UPLOADS) ================= */
 const possibleUploadPaths = [
   path.join(process.cwd(), "uploads"),
   path.join(__dirname, "uploads"),
@@ -58,12 +58,34 @@ app.use("/api/admin", require("./routes/admin.book.routes"));
 app.use("/api/orders", require("./routes/order.routes"));
 app.use("/api/contact", require("./routes/contact.routes"));
 
-/* ================= GLOBAL ERROR (CORS) ================= */
+/* ================= GLOBAL ERROR HANDLER ================= */
+app.use((err, req, res, next) => {
+  // Multer (file upload) errors → JSON
+  if (err instanceof multer.MulterError) {
+    return res.status(400).json({
+      message:
+        err.message ||
+        "File upload error (only jpg, png, webp allowed, max 2MB)",
+    });
+  }
+
+  // Custom errors (like fileFilter)
+  if (err && err.message) {
+    return res.status(400).json({ message: err.message });
+  }
+
+  next(err);
+});
+
+/* ================= GLOBAL ERROR (CORS FALLBACK) ================= */
 app.use((err, req, res, next) => {
   if (err.message === "CORS not allowed") {
     return res.status(403).json({ message: "CORS blocked" });
   }
-  next(err);
+
+  return res.status(500).json({
+    message: "Internal Server Error",
+  });
 });
 
 module.exports = app;
