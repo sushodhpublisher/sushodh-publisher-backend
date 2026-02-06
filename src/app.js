@@ -45,7 +45,7 @@ const possibleUploadPaths = [
 const uploadPath = possibleUploadPaths.find((p) => fs.existsSync(p));
 
 if (!uploadPath) {
-  console.error("❌ uploads folder NOT FOUND in any expected location");
+  console.error("uploads folder NOT FOUND in any expected location");
 } else {
   console.log("Serving uploads from:", uploadPath);
   app.use("/uploads", express.static(uploadPath));
