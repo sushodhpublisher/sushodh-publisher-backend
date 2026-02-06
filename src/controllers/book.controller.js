@@ -145,7 +145,6 @@ exports.toggleFeaturedBook = async (req, res) => {
       return res.status(404).json({ message: "Book not found" });
     }
 
-    // safety rule
     if (isFeatured && !book.isActive) {
       return res
         .status(400)
@@ -154,10 +153,13 @@ exports.toggleFeaturedBook = async (req, res) => {
 
     book.isFeatured = isFeatured;
 
-    // CRITICAL FIX
+    // CRITICAL: bypass validation for old books
     await book.save({ validateBeforeSave: false });
 
-    res.status(200).json({ success: true });
+    res.status(200).json({
+      success: true,
+      isFeatured: book.isFeatured,
+    });
   } catch (error) {
     console.error("Toggle Featured Error:", error);
     res.status(500).json({ message: "Failed to update featured status" });
@@ -165,7 +167,7 @@ exports.toggleFeaturedBook = async (req, res) => {
 };
 
 /* =====================================================
-   ADMIN: TOGGLE ACTIVE 
+   ADMIN: TOGGLE ACTIVE
 ===================================================== */
 exports.toggleActiveBook = async (req, res) => {
   try {
@@ -184,14 +186,20 @@ exports.toggleActiveBook = async (req, res) => {
     }
 
     book.isActive = isActive;
+
+    // auto-unfeature when inactive
     if (!isActive) {
       book.isFeatured = false;
     }
 
-    // CRITICAL FIX
+    // CRITICAL: bypass validation for old books
     await book.save({ validateBeforeSave: false });
 
-    res.status(200).json({ success: true });
+    res.status(200).json({
+      success: true,
+      isActive: book.isActive,
+      isFeatured: book.isFeatured,
+    });
   } catch (error) {
     console.error("Toggle Active Error:", error);
     res.status(500).json({ message: "Failed to update active status" });
@@ -225,8 +233,12 @@ exports.updateBook = async (req, res) => {
       title: req.body.title,
       price: req.body.price,
       description: req.body.description,
-      isActive: req.body.isActive === "true",
-      isFeatured: req.body.isFeatured === "true",
+      ...(req.body.isActive !== undefined && {
+        isActive: req.body.isActive === "true",
+      }),
+      ...(req.body.isFeatured !== undefined && {
+        isFeatured: req.body.isFeatured === "true",
+      }),
       ...(authors && { authors }),
     };
 
