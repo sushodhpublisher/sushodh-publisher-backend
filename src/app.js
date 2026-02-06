@@ -65,7 +65,7 @@ app.use((err, req, res, next) => {
     return res.status(400).json({
       message:
         err.message ||
-        "File upload error (only jpg, png, webp allowed, max 10MB)",
+        "File upload error (only jpg, png, webp allowed, max 5MB)",
     });
   }
 

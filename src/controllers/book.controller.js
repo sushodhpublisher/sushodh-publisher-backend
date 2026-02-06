@@ -231,21 +231,23 @@ exports.updateBook = async (req, res) => {
 
     let authors;
 
-    if (req.body.authors) {
-      try {
-        authors = JSON.parse(req.body.authors);
-
-        if (!Array.isArray(authors) || authors.length < 1) {
-          return res
-            .status(400)
-            .json({ message: "At least 1 author is required" });
-        }
-
-        authors = authors.map((a) => a.trim()).filter(Boolean);
-      } catch {
-        return res.status(400).json({ message: "Invalid authors format" });
-      }
+    try {
+      authors = req.body.authors ? JSON.parse(req.body.authors) : null;
+    } catch {
+      return res.status(400).json({ message: "Invalid authors format" });
     }
+
+    if (
+      !Array.isArray(authors) ||
+      authors.length < 1 ||
+      authors.some((a) => !a || !a.trim())
+    ) {
+      return res.status(400).json({
+        message: "At least 1 valid author is required",
+      });
+    }
+
+    authors = authors.map((a) => a.trim());
 
     const updateData = {
       title: req.body.title,
