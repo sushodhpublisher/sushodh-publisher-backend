@@ -132,24 +132,32 @@ exports.getBookByIdForAdmin = async (req, res) => {
 exports.toggleFeaturedBook = async (req, res) => {
   try {
     const { id } = req.params;
+    const { isFeatured } = req.body;
 
-    if (!req.body || typeof req.body.isFeatured !== "boolean") {
+    if (typeof isFeatured !== "boolean") {
       return res.status(400).json({
         message: "Invalid payload: isFeatured must be boolean",
       });
     }
 
-    const book = await Book.findByIdAndUpdate(
-      id,
-      { isFeatured: req.body.isFeatured },
-      { new: true },
-    ).lean();
-
+    const book = await Book.findById(id);
     if (!book) {
       return res.status(404).json({ message: "Book not found" });
     }
 
-    res.status(200).json({ success: true, book });
+    // safety rule
+    if (isFeatured && !book.isActive) {
+      return res
+        .status(400)
+        .json({ message: "Inactive book cannot be featured" });
+    }
+
+    book.isFeatured = isFeatured;
+
+    // CRITICAL FIX
+    await book.save({ validateBeforeSave: false });
+
+    res.status(200).json({ success: true });
   } catch (error) {
     console.error("Toggle Featured Error:", error);
     res.status(500).json({ message: "Failed to update featured status" });
@@ -157,32 +165,33 @@ exports.toggleFeaturedBook = async (req, res) => {
 };
 
 /* =====================================================
-   ADMIN: TOGGLE ACTIVE
+   ADMIN: TOGGLE ACTIVE 
 ===================================================== */
 exports.toggleActiveBook = async (req, res) => {
   try {
     const { id } = req.params;
+    const { isActive } = req.body;
 
-    if (!req.body || typeof req.body.isActive !== "boolean") {
+    if (typeof isActive !== "boolean") {
       return res.status(400).json({
         message: "Invalid payload: isActive must be boolean",
       });
     }
 
-    const book = await Book.findByIdAndUpdate(
-      id,
-      {
-        isActive: req.body.isActive,
-        ...(req.body.isActive === false && { isFeatured: false }),
-      },
-      { new: true },
-    ).lean();
-
+    const book = await Book.findById(id);
     if (!book) {
       return res.status(404).json({ message: "Book not found" });
     }
 
-    res.status(200).json({ success: true, book });
+    book.isActive = isActive;
+    if (!isActive) {
+      book.isFeatured = false;
+    }
+
+    // CRITICAL FIX
+    await book.save({ validateBeforeSave: false });
+
+    res.status(200).json({ success: true });
   } catch (error) {
     console.error("Toggle Active Error:", error);
     res.status(500).json({ message: "Failed to update active status" });
