@@ -1,5 +1,6 @@
 const Book = require("../models/Book");
 const slugify = require("slugify");
+const mongoose = require("mongoose");
 
 /* =====================================================
    ADMIN: CREATE BOOK
@@ -114,7 +115,13 @@ exports.getAllBooksForAdmin = async (req, res) => {
 ===================================================== */
 exports.getBookByIdForAdmin = async (req, res) => {
   try {
-    const book = await Book.findById(req.params.id);
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid book id" });
+    }
+
+    const book = await Book.findById(id);
 
     if (!book) {
       return res.status(404).json({ message: "Book not found" });
@@ -133,6 +140,10 @@ exports.toggleFeaturedBook = async (req, res) => {
   try {
     const { id } = req.params;
     let { isFeatured } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid book id" });
+    }
 
     if (typeof isFeatured === "string") {
       isFeatured = isFeatured === "true";
@@ -156,7 +167,6 @@ exports.toggleFeaturedBook = async (req, res) => {
     }
 
     book.isFeatured = isFeatured;
-
     await book.save({ validateBeforeSave: false });
 
     res.status(200).json({
@@ -175,7 +185,11 @@ exports.toggleFeaturedBook = async (req, res) => {
 exports.toggleActiveBook = async (req, res) => {
   try {
     const { id } = req.params;
-    let { isActive } = req.body; // 🔧 change const → let
+    let { isActive } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid book id" });
+    }
 
     if (typeof isActive === "string") {
       isActive = isActive === "true";
@@ -216,6 +230,12 @@ exports.toggleActiveBook = async (req, res) => {
 ===================================================== */
 exports.updateBook = async (req, res) => {
   try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid book id" });
+    }
+
     let authors;
 
     if (req.body.authors) {
@@ -251,7 +271,7 @@ exports.updateBook = async (req, res) => {
       updateData.coverImage = `/uploads/books/${req.file.filename}`;
     }
 
-    const book = await Book.findByIdAndUpdate(req.params.id, updateData, {
+    const book = await Book.findByIdAndUpdate(id, updateData, {
       new: true,
     });
 
@@ -261,11 +281,6 @@ exports.updateBook = async (req, res) => {
 
     res.json(book);
   } catch (error) {
-    if (error.code === 11000) {
-      return res.status(409).json({
-        message: "A similar book already exists. Please try again.",
-      });
-    }
     res.status(500).json({ message: "Failed to update book" });
   }
 };
@@ -275,7 +290,13 @@ exports.updateBook = async (req, res) => {
 ===================================================== */
 exports.deleteBook = async (req, res) => {
   try {
-    const book = await Book.findByIdAndDelete(req.params.id);
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid book id" });
+    }
+
+    const book = await Book.findByIdAndDelete(id);
 
     if (!book) {
       return res.status(404).json({ message: "Book not found" });
