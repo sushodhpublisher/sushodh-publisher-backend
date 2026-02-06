@@ -15,8 +15,9 @@ const storage = multer.diskStorage({
     cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
     const uniqueName = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, uniqueName + path.extname(file.originalname).toLowerCase());
+    cb(null, `${uniqueName}${ext}`);
   },
 });
 
@@ -24,20 +25,17 @@ const storage = multer.diskStorage({
 const fileFilter = (req, file, cb) => {
   const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 
-  if (allowedTypes.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(
-      new multer.MulterError(
-        "LIMIT_UNEXPECTED_FILE",
-        "Only image files (jpg, png, webp) are allowed",
-      ),
+  if (!allowedTypes.includes(file.mimetype)) {
+    return cb(
+      new Error("Only image files (jpg, png, webp) are allowed"),
       false,
     );
   }
+
+  cb(null, true);
 };
 
-/* ================= EXPORT ================= */
+/* ================= MULTER INSTANCE ================= */
 const upload = multer({
   storage,
   fileFilter,

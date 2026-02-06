@@ -29,6 +29,7 @@ const bookSchema = new mongoose.Schema(
 
     coverImage: {
       type: String,
+      default: "",
     },
 
     isActive: {
@@ -44,50 +45,30 @@ const bookSchema = new mongoose.Schema(
     authors: {
       type: [String],
       required: true,
-      validate: [
-        {
-          validator: function (arr) {
-            return (
-              Array.isArray(arr) &&
-              arr.length >= 1 &&
-              arr.every((a) => typeof a === "string" && a.trim().length > 0)
-            );
-          },
-          message: "At least 1 valid author name is required",
+      validate: {
+        validator: function (arr) {
+          return (
+            Array.isArray(arr) &&
+            arr.length >= 1 &&
+            arr.every((a) => typeof a === "string" && a.trim().length > 0)
+          );
         },
-      ],
+        message: "At least 1 valid author name is required",
+      },
     },
   },
   { timestamps: true },
 );
 
-/* ================= SLUG NORMALIZATION (CREATE) ================= */
-bookSchema.pre("save", function (next) {
-  if (this.slug) {
-    this.slug = this.slug
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9\s-]/g, "")
-      .replace(/\s+/g, "-");
-  }
-  next();
-});
+/* ================= INDEXES ================= */
+bookSchema.index({ isActive: 1 });
+bookSchema.index({ isFeatured: 1 });
+bookSchema.index({ isActive: 1, isFeatured: 1 });
 
-/* ================= SLUG NORMALIZATION (UPDATE) ================= */
-bookSchema.pre("findOneAndUpdate", function (next) {
-  const update = this.getUpdate();
-
-  if (update && update.slug) {
-    update.slug = update.slug
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9\s-]/g, "")
-      .replace(/\s+/g, "-");
-
-    this.setUpdate(update);
-  }
-
-  next();
-});
+/*
+  IMPORTANT:
+  Slug is generated & normalized in controller using slugify.
+  Do NOT mutate slug here to avoid collisions.
+*/
 
 module.exports = mongoose.model("Book", bookSchema);

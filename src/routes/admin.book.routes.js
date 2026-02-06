@@ -15,7 +15,16 @@ const upload = require("../middleware/upload.middleware");
 const router = express.Router();
 
 /* ================= ADMIN: GET ALL BOOKS ================= */
-router.get("/books", verifyToken, isAdmin, getAllBooksForAdmin);
+router.get(
+  "/books",
+  verifyToken,
+  isAdmin,
+  (req, res, next) => {
+    res.set("Cache-Control", "no-store"); // ✅ ensure fresh admin data
+    next();
+  },
+  getAllBooksForAdmin,
+);
 
 /* ================= ADMIN: GET SINGLE BOOK ================= */
 router.get("/books/:id", verifyToken, isAdmin, getBookByIdForAdmin);
