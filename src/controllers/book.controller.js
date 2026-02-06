@@ -155,7 +155,7 @@ exports.toggleFeaturedBook = async (req, res) => {
       });
     }
 
-    const book = await Book.findById(id);
+    const book = await Book.findById(id).lean();
     if (!book) {
       return res.status(404).json({ message: "Book not found" });
     }
@@ -166,13 +166,9 @@ exports.toggleFeaturedBook = async (req, res) => {
         .json({ message: "Inactive book cannot be featured" });
     }
 
-    book.isFeatured = isFeatured;
-    await book.save({ validateBeforeSave: false });
+    await Book.updateOne({ _id: id }, { $set: { isFeatured } });
 
-    res.status(200).json({
-      success: true,
-      isFeatured: book.isFeatured,
-    });
+    res.status(200).json({ success: true, isFeatured });
   } catch (error) {
     console.error("Toggle Featured Error:", error);
     res.status(500).json({ message: "Failed to update featured status" });
@@ -201,23 +197,20 @@ exports.toggleActiveBook = async (req, res) => {
       });
     }
 
-    const book = await Book.findById(id);
-    if (!book) {
-      return res.status(404).json({ message: "Book not found" });
-    }
-
-    book.isActive = isActive;
-
-    if (!isActive) {
-      book.isFeatured = false;
-    }
-
-    await book.save({ validateBeforeSave: false });
+    await Book.updateOne(
+      { _id: id },
+      {
+        $set: {
+          isActive,
+          ...(isActive === false && { isFeatured: false }),
+        },
+      },
+    );
 
     res.status(200).json({
       success: true,
-      isActive: book.isActive,
-      isFeatured: book.isFeatured,
+      isActive,
+      isFeatured: isActive ? undefined : false,
     });
   } catch (error) {
     console.error("Toggle Active Error:", error);
