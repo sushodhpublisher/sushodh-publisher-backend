@@ -2,6 +2,9 @@ const Book = require("../models/Book");
 const slugify = require("slugify");
 const mongoose = require("mongoose");
 
+/* ================= HELPERS ================= */
+const toBoolean = (val) => val === true || val === "true";
+
 /* =====================================================
    ADMIN: CREATE BOOK
 ===================================================== */
@@ -30,16 +33,17 @@ exports.createBook = async (req, res) => {
     const book = await Book.create({
       title: req.body.title,
       slug,
-      price: req.body.price,
+      price: Number(req.body.price),
       description: req.body.description,
-      isActive: req.body.isActive === "true",
-      isFeatured: req.body.isFeatured === "true",
+      isActive: toBoolean(req.body.isActive),
+      isFeatured: toBoolean(req.body.isFeatured),
       authors,
       coverImage,
     });
 
     res.status(201).json(book);
   } catch (error) {
+    console.error("Create Book Error:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -54,7 +58,8 @@ exports.getAllBooks = async (req, res) => {
       .lean();
 
     res.status(200).json(books);
-  } catch {
+  } catch (error) {
+    console.error("Get All Books Error:", error);
     res.status(500).json({ message: "Failed to fetch books" });
   }
 };
@@ -73,7 +78,8 @@ exports.getBookBySlug = async (req, res) => {
     }
 
     res.status(200).json(book);
-  } catch {
+  } catch (error) {
+    console.error("Get Book By Slug Error:", error);
     res.status(500).json({ message: "Failed to fetch book" });
   }
 };
@@ -92,7 +98,8 @@ exports.getFeaturedBooks = async (req, res) => {
       .lean();
 
     res.status(200).json(books);
-  } catch {
+  } catch (error) {
+    console.error("Featured Books Error:", error);
     res.status(500).json({ message: "Failed to fetch featured books" });
   }
 };
@@ -105,7 +112,8 @@ exports.getAllBooksForAdmin = async (req, res) => {
     res.set("Cache-Control", "no-store");
     const books = await Book.find().sort({ createdAt: -1 }).lean();
     res.status(200).json(books);
-  } catch {
+  } catch (error) {
+    console.error("Admin Get All Books Error:", error);
     res.status(500).json({ message: "Failed to fetch books" });
   }
 };
@@ -128,7 +136,8 @@ exports.getBookByIdForAdmin = async (req, res) => {
     }
 
     res.status(200).json(book);
-  } catch {
+  } catch (error) {
+    console.error("Admin Get Book Error:", error);
     res.status(500).json({ message: "Failed to fetch book" });
   }
 };
@@ -230,34 +239,37 @@ exports.updateBook = async (req, res) => {
     }
 
     let authors;
+    if (req.body.authors !== undefined) {
+      try {
+        authors = JSON.parse(req.body.authors);
+      } catch {
+        return res.status(400).json({ message: "Invalid authors format" });
+      }
 
-    try {
-      authors = req.body.authors ? JSON.parse(req.body.authors) : null;
-    } catch {
-      return res.status(400).json({ message: "Invalid authors format" });
+      if (
+        !Array.isArray(authors) ||
+        authors.length < 1 ||
+        authors.some((a) => !a || !a.trim())
+      ) {
+        return res.status(400).json({
+          message: "At least 1 valid author is required",
+        });
+      }
+
+      authors = authors.map((a) => a.trim());
     }
-
-    if (
-      !Array.isArray(authors) ||
-      authors.length < 1 ||
-      authors.some((a) => !a || !a.trim())
-    ) {
-      return res.status(400).json({
-        message: "At least 1 valid author is required",
-      });
-    }
-
-    authors = authors.map((a) => a.trim());
 
     const updateData = {
       title: req.body.title,
-      price: req.body.price,
       description: req.body.description,
+      ...(req.body.price !== undefined && {
+        price: Number(req.body.price),
+      }),
       ...(req.body.isActive !== undefined && {
-        isActive: req.body.isActive === "true",
+        isActive: toBoolean(req.body.isActive),
       }),
       ...(req.body.isFeatured !== undefined && {
-        isFeatured: req.body.isFeatured === "true",
+        isFeatured: toBoolean(req.body.isFeatured),
       }),
       ...(authors && { authors }),
     };
@@ -276,7 +288,8 @@ exports.updateBook = async (req, res) => {
 
     res.json(book);
   } catch (error) {
-    res.status(500).json({ message: "Failed to update book" });
+    console.error("Update Book Error:", error);
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -298,7 +311,8 @@ exports.deleteBook = async (req, res) => {
     }
 
     res.json({ message: "Book deleted successfully" });
-  } catch {
+  } catch (error) {
+    console.error("Delete Book Error:", error);
     res.status(500).json({ message: "Failed to delete book" });
   }
 };
