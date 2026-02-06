@@ -36,16 +36,17 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 /* ================= STATIC FILES (UPLOADS) ================= */
-const possibleUploadPaths = [
-  path.join(process.cwd(), "uploads"),
-  path.join(__dirname, "uploads"),
-  path.join(__dirname, "..", "uploads"),
-];
+/**
+ * IMPORTANT:
+ * uploads folder lives at:
+ * backend/uploads
+ * and this file is at:
+ * backend/src/app.js
+ */
+const uploadPath = path.join(__dirname, "..", "uploads");
 
-const uploadPath = possibleUploadPaths.find((p) => fs.existsSync(p));
-
-if (!uploadPath) {
-  console.error("uploads folder NOT FOUND in any expected location");
+if (!fs.existsSync(uploadPath)) {
+  console.error("uploads folder NOT FOUND at:", uploadPath);
 } else {
   console.log("Serving uploads from:", uploadPath);
   app.use("/uploads", express.static(uploadPath));
@@ -77,7 +78,7 @@ app.use((err, req, res, next) => {
   next(err);
 });
 
-/* ================= GLOBAL ERROR (CORS FALLBACK) ================= */
+/* ================= FINAL ERROR FALLBACK ================= */
 app.use((err, req, res, next) => {
   if (err.message === "CORS not allowed") {
     return res.status(403).json({ message: "CORS blocked" });
