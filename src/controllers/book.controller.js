@@ -132,7 +132,11 @@ exports.getBookByIdForAdmin = async (req, res) => {
 exports.toggleFeaturedBook = async (req, res) => {
   try {
     const { id } = req.params;
-    const { isFeatured } = req.body;
+    let { isFeatured } = req.body;
+
+    if (typeof isFeatured === "string") {
+      isFeatured = isFeatured === "true";
+    }
 
     if (typeof isFeatured !== "boolean") {
       return res.status(400).json({
@@ -153,7 +157,6 @@ exports.toggleFeaturedBook = async (req, res) => {
 
     book.isFeatured = isFeatured;
 
-    // CRITICAL: bypass validation for old books
     await book.save({ validateBeforeSave: false });
 
     res.status(200).json({
@@ -172,7 +175,11 @@ exports.toggleFeaturedBook = async (req, res) => {
 exports.toggleActiveBook = async (req, res) => {
   try {
     const { id } = req.params;
-    const { isActive } = req.body;
+    let { isActive } = req.body; // 🔧 change const → let
+
+    if (typeof isActive === "string") {
+      isActive = isActive === "true";
+    }
 
     if (typeof isActive !== "boolean") {
       return res.status(400).json({
@@ -187,12 +194,10 @@ exports.toggleActiveBook = async (req, res) => {
 
     book.isActive = isActive;
 
-    // auto-unfeature when inactive
     if (!isActive) {
       book.isFeatured = false;
     }
 
-    // CRITICAL: bypass validation for old books
     await book.save({ validateBeforeSave: false });
 
     res.status(200).json({
