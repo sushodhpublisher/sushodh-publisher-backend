@@ -36,21 +36,22 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 /* ================= STATIC FILES (UPLOADS) ================= */
-/**
- * IMPORTANT:
- * uploads folder lives at:
- * backend/uploads
- * and this file is at:
- * backend/src/app.js
- */
-const uploadPath = path.join(__dirname, "..", "uploads");
 
+const uploadPath = path.join(__dirname, "..", "uploads");
+const booksUploadPath = path.join(uploadPath, "books");
+
+/* ENSURE UPLOAD DIRECTORIES EXIST (PRODUCTION SAFE) */
 if (!fs.existsSync(uploadPath)) {
-  console.error("uploads folder NOT FOUND at:", uploadPath);
-} else {
-  console.log("Serving uploads from:", uploadPath);
-  app.use("/uploads", express.static(uploadPath));
+  fs.mkdirSync(uploadPath);
 }
+
+if (!fs.existsSync(booksUploadPath)) {
+  fs.mkdirSync(booksUploadPath);
+}
+
+/* Serve uploads */
+app.use("/uploads", express.static(uploadPath));
+console.log("Serving uploads from:", uploadPath);
 
 /* ================= ROUTES ================= */
 app.use("/api/auth", require("./routes/auth.routes"));

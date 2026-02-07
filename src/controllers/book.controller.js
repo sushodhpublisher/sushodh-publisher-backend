@@ -53,13 +53,17 @@ exports.createBook = async (req, res) => {
 ===================================================== */
 exports.getAllBooks = async (req, res) => {
   try {
+    res.set(
+      "Cache-Control",
+      "no-store, no-cache, must-revalidate, proxy-revalidate",
+    );
+
     const books = await Book.find({ isActive: true })
       .sort({ createdAt: -1 })
       .lean();
 
     res.status(200).json(books);
   } catch (error) {
-    console.error("Get All Books Error:", error);
     res.status(500).json({ message: "Failed to fetch books" });
   }
 };
@@ -89,17 +93,20 @@ exports.getBookBySlug = async (req, res) => {
 ===================================================== */
 exports.getFeaturedBooks = async (req, res) => {
   try {
+    res.set(
+      "Cache-Control",
+      "no-store, no-cache, must-revalidate, proxy-revalidate",
+    );
+
     const books = await Book.find({
       isActive: true,
       isFeatured: true,
     })
-      .select("title slug price coverImage authors")
       .sort({ createdAt: -1 })
       .lean();
 
     res.status(200).json(books);
   } catch (error) {
-    console.error("Featured Books Error:", error);
     res.status(500).json({ message: "Failed to fetch featured books" });
   }
 };

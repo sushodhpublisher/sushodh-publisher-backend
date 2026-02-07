@@ -20,7 +20,7 @@ router.get(
   verifyToken,
   isAdmin,
   (req, res, next) => {
-    res.set("Cache-Control", "no-store"); // ✅ ensure fresh admin data
+    res.set("Cache-Control", "no-store"); // ensure fresh admin data
     next();
   },
   getAllBooksForAdmin,
