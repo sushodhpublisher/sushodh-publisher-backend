@@ -4,6 +4,8 @@ const path = require("path");
 const fs = require("fs");
 const multer = require("multer");
 
+const { verifyToken } = require("./middlewares/auth");
+
 const app = express();
 
 /* ================= CORS (PRODUCTION + LOCAL SAFE) ================= */
@@ -37,7 +39,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 /* ================= STATIC FILES (UPLOADS) ================= */
-
 const uploadPath = path.join(__dirname, "..", "uploads");
 const booksUploadPath = path.join(uploadPath, "books");
 
@@ -54,12 +55,23 @@ if (!fs.existsSync(booksUploadPath)) {
 app.use("/uploads", express.static(uploadPath));
 console.log("Serving uploads from:", uploadPath);
 
-/* ================= ROUTES ================= */
+/* =========================================================
+   PUBLIC ROUTES (NO AUTH REQUIRED)
+========================================================= */
+app.use("/api/contact", require("./routes/contact.routes"));
 app.use("/api/auth", require("./routes/auth.routes"));
 app.use("/api/books", require("./routes/book.routes"));
+
+/* =========================================================
+   AUTH MIDDLEWARE (APPLIED AFTER PUBLIC ROUTES)
+========================================================= */
+app.use(verifyToken);
+
+/* =========================================================
+   PROTECTED ROUTES (AUTH REQUIRED)
+========================================================= */
 app.use("/api/admin", require("./routes/admin.book.routes"));
 app.use("/api/orders", require("./routes/order.routes"));
-app.use("/api/contact", require("./routes/contact.routes"));
 
 /* ================= GLOBAL ERROR HANDLER ================= */
 app.use((err, req, res, next) => {
@@ -72,7 +84,7 @@ app.use((err, req, res, next) => {
     });
   }
 
-  // Custom errors (like fileFilter)
+  // Custom errors
   if (err && err.message) {
     return res.status(400).json({ message: err.message });
   }
