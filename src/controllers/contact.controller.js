@@ -1,5 +1,10 @@
 const nodemailer = require("nodemailer");
 
+console.log("CONTACT ENV:", {
+  email: process.env.CONTACT_EMAIL,
+  pass: process.env.CONTACT_EMAIL_PASS ? "SET" : "MISSING",
+});
+
 exports.sendContactMail = async (req, res) => {
   try {
     const { name, email, message } = req.body;
@@ -13,7 +18,9 @@ exports.sendContactMail = async (req, res) => {
 
     /* ================= TRANSPORTER ================= */
     const transporter = nodemailer.createTransport({
-      service: "gmail",
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
       auth: {
         user: process.env.CONTACT_EMAIL,
         pass: process.env.CONTACT_EMAIL_PASS,
@@ -43,7 +50,6 @@ exports.sendContactMail = async (req, res) => {
     });
   } catch (error) {
     console.error("Contact Mail Error:", error?.message || error);
-    console.log("MAIL ENV:", process.env.CONTACT_EMAIL ? "OK" : "MISSING");
 
     return res.status(500).json({
       message: "Failed to send message",
