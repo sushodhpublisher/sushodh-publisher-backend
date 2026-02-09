@@ -9,6 +9,7 @@ const app = express();
 /* ================= CORS (PRODUCTION + LOCAL SAFE) ================= */
 const allowedOrigins = [
   "http://localhost:3000",
+  "https://publisher.sushodh.com",
   "https://sushodh-publisher-frontend.vercel.app",
   "https://sushodh.com",
 ];
