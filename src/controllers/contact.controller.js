@@ -43,6 +43,7 @@ exports.sendContactMail = async (req, res) => {
     });
   } catch (error) {
     console.error("Contact Mail Error:", error?.message || error);
+    console.log("MAIL ENV:", process.env.CONTACT_EMAIL ? "OK" : "MISSING");
 
     return res.status(500).json({
       message: "Failed to send message",
