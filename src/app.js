@@ -4,7 +4,7 @@ const path = require("path");
 const fs = require("fs");
 const multer = require("multer");
 
-const { verifyToken } = require("./middlewares/auth.js");
+const { verifyToken } = require("../middlewares/auth.js");
 
 const app = express();
 
