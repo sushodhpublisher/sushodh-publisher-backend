@@ -10,18 +10,39 @@ exports.sendContactMail = async (req, res) => {
         message: "All fields are required",
       });
     }
-    console.log({
-      name,
-      email,
-      message,
-      receivedAt: new Date().toISOString(),
+
+    /* ================= TRANSPORTER ================= */
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.CONTACT_EMAIL,
+        pass: process.env.CONTACT_EMAIL_PASS,
+      },
+      connectionTimeout: 10000,
     });
 
+    /* ================= MAIL ================= */
+    const mailOptions = {
+      from: `"Website Contact" <${process.env.CONTACT_EMAIL}>`,
+      to: "sushodhpublisher@gmail.com",
+      replyTo: email,
+      subject: `New Contact Message from ${name}`,
+      html: `
+        <h3>New Contact Form Submission</h3>
+        <p><strong>Name:</strong> ${name}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Message:</strong></p>
+        <p>${message}</p>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
     return res.status(200).json({
-      message: "Message received successfully",
+      message: "Message sent successfully!",
     });
   } catch (error) {
-    console.error("Contact Controller Error:", error);
+    console.error("Contact Mail Error:", error?.message || error);
 
     return res.status(500).json({
       message: "Failed to send message",
