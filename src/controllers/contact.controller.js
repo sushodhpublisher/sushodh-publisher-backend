@@ -13,7 +13,7 @@ exports.sendContactMail = async (req, res) => {
       {
         sender: {
           name: "Sushodh Publisher",
-          email: "contact@smtp-brevo.com",
+          email: "sushodhpublisher@gmail.com",
         },
         to: [{ email: "sushodhpublisher@gmail.com" }],
         replyTo: { email },
