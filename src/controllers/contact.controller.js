@@ -19,7 +19,7 @@ exports.sendContactMail = async (req, res) => {
     });
 
     await transporter.sendMail({
-      from: `"Sushodh Publisher" <${process.env.BREVO_SMTP_EMAIL}>`,
+      from: "Sushodh Publisher <no-reply@smtp-brevo.com>",
       to: "sushodhpublisher@gmail.com",
       replyTo: email,
       subject: `New Contact Message from ${name}`,
