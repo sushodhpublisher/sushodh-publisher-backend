@@ -16,33 +16,27 @@ exports.sendContactMail = async (req, res) => {
         user: process.env.BREVO_SMTP_EMAIL,
         pass: process.env.BREVO_SMTP_KEY,
       },
-      tls: {
-        ciphers: "SSLv3",
-        rejectUnauthorized: false,
-      },
+      logger: true,
+      debug: true,
     });
+
+    await transporter.verify();
 
     await transporter.sendMail({
       from: "Sushodh Publisher <contact@smtp-brevo.com>",
       to: "sushodhpublisher@gmail.com",
       replyTo: email,
       subject: `New Contact Message from ${name}`,
-      html: `
-        <h3>New Contact Form Submission</h3>
-        <p><strong>Name:</strong> ${name}</p>
-        <p><strong>Email:</strong> ${email}</p>
-        <p><strong>Message:</strong></p>
-        <p>${message}</p>
-      `,
+      html: `<p>${message}</p>`,
     });
 
-    return res.status(200).json({
-      message: "Message sent successfully!",
-    });
+    return res.status(200).json({ message: "Message sent successfully!" });
   } catch (error) {
-    console.error("BREVO ERROR:", error);
+    console.error("BREVO SMTP REAL ERROR");
+    console.error(error); // FULL OBJECT
+
     return res.status(500).json({
-      message: "Failed to send message",
+      message: error.message || "SMTP failed",
     });
   }
 };
