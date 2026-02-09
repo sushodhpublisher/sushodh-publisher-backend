@@ -38,9 +38,11 @@ exports.sendContactMail = async (req, res) => {
       message: "Message sent successfully!",
     });
   } catch (error) {
-    console.error("BREVO API ERROR:", error.response?.data || error.message);
+    console.error("BREVO API STATUS:", error.response?.status);
+    console.error("BREVO API DATA:", error.response?.data);
+    console.error("BREVO API MESSAGE:", error.message);
     return res.status(500).json({
-      message: "Failed to send message",
+      message: error.response?.data?.message || "Failed to send message",
     });
   }
 };
