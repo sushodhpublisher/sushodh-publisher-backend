@@ -16,6 +16,9 @@ exports.sendContactMail = async (req, res) => {
         user: process.env.BREVO_SMTP_EMAIL,
         pass: process.env.BREVO_SMTP_KEY,
       },
+      tls: {
+        rejectUnauthorized: false,
+      },
     });
 
     await transporter.sendMail({
@@ -36,7 +39,7 @@ exports.sendContactMail = async (req, res) => {
       message: "Message sent successfully!",
     });
   } catch (error) {
-    console.error("Brevo Mail Error:", error);
+    console.error("BREVO ERROR FULL:", error);
     return res.status(500).json({
       message: "Failed to send message",
     });
