@@ -1,6 +1,7 @@
 const axios = require("axios");
 
 exports.sendContactMail = async (req, res) => {
+  console.log("CONTACT API HIT", req.body);
   try {
     const { name, email, message } = req.body;
 
