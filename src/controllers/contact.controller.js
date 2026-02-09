@@ -1,4 +1,4 @@
-const nodemailer = require("nodemailer");
+const axios = require("axios");
 
 exports.sendContactMail = async (req, res) => {
   try {
@@ -8,35 +8,39 @@ exports.sendContactMail = async (req, res) => {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    const transporter = nodemailer.createTransport({
-      host: "smtp-relay.brevo.com",
-      port: 587,
-      secure: false,
-      auth: {
-        user: process.env.BREVO_SMTP_EMAIL,
-        pass: process.env.BREVO_SMTP_KEY,
+    await axios.post(
+      "https://api.brevo.com/v3/smtp/email",
+      {
+        sender: {
+          name: "Sushodh Publisher",
+          email: "contact@smtp-brevo.com",
+        },
+        to: [{ email: "sushodhpublisher@gmail.com" }],
+        replyTo: { email },
+        subject: `New Contact Message from ${name}`,
+        htmlContent: `
+          <h3>New Contact Form Submission</h3>
+          <p><strong>Name:</strong> ${name}</p>
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Message:</strong></p>
+          <p>${message}</p>
+        `,
       },
-      logger: true,
-      debug: true,
+      {
+        headers: {
+          "api-key": process.env.BREVO_API_KEY,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+
+    return res.status(200).json({
+      message: "Message sent successfully!",
     });
-
-    await transporter.verify();
-
-    await transporter.sendMail({
-      from: "Sushodh Publisher <contact@smtp-brevo.com>",
-      to: "sushodhpublisher@gmail.com",
-      replyTo: email,
-      subject: `New Contact Message from ${name}`,
-      html: `<p>${message}</p>`,
-    });
-
-    return res.status(200).json({ message: "Message sent successfully!" });
   } catch (error) {
-    console.error("BREVO SMTP REAL ERROR");
-    console.error(error); // FULL OBJECT
-
+    console.error("BREVO API ERROR:", error.response?.data || error.message);
     return res.status(500).json({
-      message: error.message || "SMTP failed",
+      message: "Failed to send message",
     });
   }
 };
