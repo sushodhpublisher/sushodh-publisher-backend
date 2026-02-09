@@ -16,6 +16,10 @@ exports.sendContactMail = async (req, res) => {
         user: process.env.BREVO_SMTP_EMAIL,
         pass: process.env.BREVO_SMTP_KEY,
       },
+      tls: {
+        ciphers: "SSLv3",
+        rejectUnauthorized: false,
+      },
     });
 
     await transporter.sendMail({
