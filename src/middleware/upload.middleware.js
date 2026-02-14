@@ -1,25 +1,7 @@
 const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
 
-/* ================= UPLOAD PATH ================= */
-const uploadPath = path.resolve(__dirname, "..", "..", "uploads", "books");
-
-if (!fs.existsSync(uploadPath)) {
-  fs.mkdirSync(uploadPath, { recursive: true });
-}
-
-/* ================= STORAGE ================= */
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadPath);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    const uniqueName = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, `${uniqueName}${ext}`);
-  },
-});
+/* ================= MEMORY STORAGE ================= */
+const storage = multer.memoryStorage();
 
 /* ================= FILE FILTER ================= */
 const fileFilter = (req, file, cb) => {

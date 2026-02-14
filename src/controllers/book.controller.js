@@ -1,113 +1,236 @@
 const Book = require("../models/Book");
 const slugify = require("slugify");
 const mongoose = require("mongoose");
+const cloudinary = require("../config/cloudinary");
 
 /* ================= HELPERS ================= */
 const toBoolean = (val) => val === true || val === "true";
+
+const parseAuthors = (rawAuthors) => {
+  let authors = [];
+
+  if (!rawAuthors) return [];
+
+  // If string → try JSON parse
+  if (typeof rawAuthors === "string") {
+    try {
+      const parsed = JSON.parse(rawAuthors);
+      if (Array.isArray(parsed)) {
+        authors = parsed;
+      } else {
+        authors = [rawAuthors];
+      }
+    } catch {
+      // fallback: comma separated string
+      authors = rawAuthors.split(",");
+    }
+  }
+
+  // If already array (rare but possible)
+  if (Array.isArray(rawAuthors)) {
+    authors = rawAuthors;
+  }
+
+  return authors.map((a) => a.trim()).filter(Boolean);
+};
+
+const uploadToCloudinary = (fileBuffer) => {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder: "sushodh-books" },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result);
+      },
+    );
+    stream.end(fileBuffer);
+  });
+};
 
 /* =====================================================
    ADMIN: CREATE BOOK
 ===================================================== */
 exports.createBook = async (req, res) => {
   try {
-    const coverImage = req.file ? `/uploads/books/${req.file.filename}` : "";
+    console.log("Incoming Body:", req.body);
 
-    let authors = [];
-    if (req.body.authors) {
-      try {
-        authors = JSON.parse(req.body.authors);
-      } catch {
-        return res.status(400).json({ message: "Invalid authors format" });
-      }
+    const { title, description, price } = req.body;
+
+    if (!title || !description || !price) {
+      return res.status(400).json({
+        message: "Title, description and price are required",
+      });
     }
 
-    if (!Array.isArray(authors) || authors.length < 1) {
-      return res.status(400).json({ message: "At least 1 author is required" });
+    const numericPrice = Number(price);
+    if (isNaN(numericPrice)) {
+      return res.status(400).json({
+        message: "Price must be a valid number",
+      });
     }
 
-    authors = authors.map((a) => a.trim()).filter(Boolean);
+    const authors = parseAuthors(req.body.authors);
 
-    const baseSlug = slugify(req.body.title, { lower: true, strict: true });
+    if (!authors.length) {
+      return res.status(400).json({
+        message: "At least 1 valid author is required",
+      });
+    }
+
+    let coverImage = "";
+    let coverImagePublicId = "";
+
+    if (req.file) {
+      const uploadResult = await uploadToCloudinary(req.file.buffer);
+      coverImage = uploadResult.secure_url;
+      coverImagePublicId = uploadResult.public_id;
+    }
+
+    const baseSlug = slugify(title, {
+      lower: true,
+      strict: true,
+    });
+
     const slug = `${baseSlug}-${Date.now().toString().slice(-5)}`;
 
     const book = await Book.create({
-      title: req.body.title,
+      title,
       slug,
-      price: Number(req.body.price),
-      description: req.body.description,
+      price: numericPrice,
+      description,
       isActive: toBoolean(req.body.isActive),
       isFeatured: toBoolean(req.body.isFeatured),
       authors,
       coverImage,
+      coverImagePublicId,
     });
 
     res.status(201).json(book);
   } catch (error) {
     console.error("Create Book Error:", error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      message: "Server error while creating book",
+    });
   }
 };
 
 /* =====================================================
-   PUBLIC: GET ALL ACTIVE BOOKS
+   ADMIN: UPDATE BOOK
 ===================================================== */
-exports.getAllBooks = async (req, res) => {
+exports.updateBook = async (req, res) => {
   try {
-    res.set(
-      "Cache-Control",
-      "no-store, no-cache, must-revalidate, proxy-revalidate",
-    );
+    const { id } = req.params;
 
-    const books = await Book.find({ isActive: true })
-      .sort({ createdAt: -1 })
-      .lean();
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid book id" });
+    }
 
-    res.status(200).json(books);
+    const existingBook = await Book.findById(id);
+    if (!existingBook) {
+      return res.status(404).json({ message: "Book not found" });
+    }
+
+    const updateData = {};
+
+    if (req.body.title) {
+      updateData.title = req.body.title;
+    }
+
+    if (req.body.description) {
+      updateData.description = req.body.description;
+    }
+
+    if (req.body.price !== undefined) {
+      const numericPrice = Number(req.body.price);
+      if (isNaN(numericPrice)) {
+        return res.status(400).json({
+          message: "Price must be a valid number",
+        });
+      }
+      updateData.price = numericPrice;
+    }
+
+    if (req.body.isActive !== undefined) {
+      updateData.isActive = toBoolean(req.body.isActive);
+    }
+
+    if (req.body.isFeatured !== undefined) {
+      updateData.isFeatured = toBoolean(req.body.isFeatured);
+    }
+
+    if (req.body.authors !== undefined) {
+      const authors = parseAuthors(req.body.authors);
+
+      if (!authors.length) {
+        return res.status(400).json({
+          message: "At least 1 valid author is required",
+        });
+      }
+
+      updateData.authors = authors;
+    }
+
+    if (req.file) {
+      // Delete old image if exists
+      if (existingBook.coverImagePublicId) {
+        try {
+          await cloudinary.uploader.destroy(existingBook.coverImagePublicId);
+        } catch (err) {
+          console.error("Cloudinary delete failed:", err.message);
+        }
+      }
+
+      const uploadResult = await uploadToCloudinary(req.file.buffer);
+
+      updateData.coverImage = uploadResult.secure_url;
+      updateData.coverImagePublicId = uploadResult.public_id;
+    }
+
+    const updatedBook = await Book.findByIdAndUpdate(id, updateData, {
+      new: true,
+    });
+
+    res.status(200).json(updatedBook);
   } catch (error) {
-    res.status(500).json({ message: "Failed to fetch books" });
+    console.error("Update Book Error:", error);
+    res.status(500).json({
+      message: "Server error while updating book",
+    });
   }
 };
 
 /* =====================================================
-   PUBLIC: GET BOOK BY SLUG
+   ADMIN: DELETE BOOK
 ===================================================== */
-exports.getBookBySlug = async (req, res) => {
+exports.deleteBook = async (req, res) => {
   try {
-    const { slug } = req.params;
+    const { id } = req.params;
 
-    const book = await Book.findOne({ slug, isActive: true }).lean();
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid book id" });
+    }
 
+    const book = await Book.findById(id);
     if (!book) {
       return res.status(404).json({ message: "Book not found" });
     }
 
-    res.status(200).json(book);
+    if (book.coverImagePublicId) {
+      try {
+        await cloudinary.uploader.destroy(book.coverImagePublicId);
+      } catch (err) {
+        console.error("Cloudinary delete failed:", err.message);
+      }
+    }
+
+    await Book.findByIdAndDelete(id);
+
+    res.status(200).json({ message: "Book deleted successfully" });
   } catch (error) {
-    console.error("Get Book By Slug Error:", error);
-    res.status(500).json({ message: "Failed to fetch book" });
-  }
-};
-
-/* =====================================================
-   PUBLIC: FEATURED BOOKS
-===================================================== */
-exports.getFeaturedBooks = async (req, res) => {
-  try {
-    res.set(
-      "Cache-Control",
-      "no-store, no-cache, must-revalidate, proxy-revalidate",
-    );
-
-    const books = await Book.find({
-      isActive: true,
-      isFeatured: true,
-    })
-      .sort({ createdAt: -1 })
-      .lean();
-
-    res.status(200).json(books);
-  } catch (error) {
-    res.status(500).json({ message: "Failed to fetch featured books" });
+    console.error("Delete Book Error:", error);
+    res.status(500).json({
+      message: "Failed to delete book",
+    });
   }
 };
 
@@ -121,7 +244,9 @@ exports.getAllBooksForAdmin = async (req, res) => {
     res.status(200).json(books);
   } catch (error) {
     console.error("Admin Get All Books Error:", error);
-    res.status(500).json({ message: "Failed to fetch books" });
+    res.status(500).json({
+      message: "Failed to fetch books",
+    });
   }
 };
 
@@ -145,7 +270,55 @@ exports.getBookByIdForAdmin = async (req, res) => {
     res.status(200).json(book);
   } catch (error) {
     console.error("Admin Get Book Error:", error);
+    res.status(500).json({
+      message: "Failed to fetch book",
+    });
+  }
+};
+
+/* =====================================================
+   PUBLIC APIs (unchanged logic)
+===================================================== */
+exports.getAllBooks = async (req, res) => {
+  try {
+    const books = await Book.find({ isActive: true })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.status(200).json(books);
+  } catch {
+    res.status(500).json({ message: "Failed to fetch books" });
+  }
+};
+
+exports.getBookBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    const book = await Book.findOne({ slug, isActive: true }).lean();
+
+    if (!book) {
+      return res.status(404).json({ message: "Book not found" });
+    }
+
+    res.status(200).json(book);
+  } catch {
     res.status(500).json({ message: "Failed to fetch book" });
+  }
+};
+
+exports.getFeaturedBooks = async (req, res) => {
+  try {
+    const books = await Book.find({
+      isActive: true,
+      isFeatured: true,
+    })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.status(200).json(books);
+  } catch {
+    res.status(500).json({ message: "Failed to fetch featured books" });
   }
 };
 
@@ -171,7 +344,7 @@ exports.toggleFeaturedBook = async (req, res) => {
       });
     }
 
-    const book = await Book.findById(id).lean();
+    const book = await Book.findById(id);
     if (!book) {
       return res.status(404).json({ message: "Book not found" });
     }
@@ -182,12 +355,15 @@ exports.toggleFeaturedBook = async (req, res) => {
         .json({ message: "Inactive book cannot be featured" });
     }
 
-    await Book.updateOne({ _id: id }, { $set: { isFeatured } });
+    book.isFeatured = isFeatured;
+    await book.save();
 
     res.status(200).json({ success: true, isFeatured });
   } catch (error) {
     console.error("Toggle Featured Error:", error);
-    res.status(500).json({ message: "Failed to update featured status" });
+    res.status(500).json({
+      message: "Failed to update featured status",
+    });
   }
 };
 
@@ -213,113 +389,28 @@ exports.toggleActiveBook = async (req, res) => {
       });
     }
 
-    await Book.updateOne(
-      { _id: id },
-      {
-        $set: {
-          isActive,
-          ...(isActive === false && { isFeatured: false }),
-        },
-      },
-    );
+    const book = await Book.findById(id);
+    if (!book) {
+      return res.status(404).json({ message: "Book not found" });
+    }
+
+    book.isActive = isActive;
+
+    if (!isActive) {
+      book.isFeatured = false;
+    }
+
+    await book.save();
 
     res.status(200).json({
       success: true,
       isActive,
-      isFeatured: isActive ? undefined : false,
+      isFeatured: book.isFeatured,
     });
   } catch (error) {
     console.error("Toggle Active Error:", error);
-    res.status(500).json({ message: "Failed to update active status" });
-  }
-};
-
-/* =====================================================
-   ADMIN: UPDATE BOOK
-===================================================== */
-exports.updateBook = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "Invalid book id" });
-    }
-
-    let authors;
-    if (req.body.authors !== undefined) {
-      try {
-        authors = JSON.parse(req.body.authors);
-      } catch {
-        return res.status(400).json({ message: "Invalid authors format" });
-      }
-
-      if (
-        !Array.isArray(authors) ||
-        authors.length < 1 ||
-        authors.some((a) => !a || !a.trim())
-      ) {
-        return res.status(400).json({
-          message: "At least 1 valid author is required",
-        });
-      }
-
-      authors = authors.map((a) => a.trim());
-    }
-
-    const updateData = {
-      title: req.body.title,
-      description: req.body.description,
-      ...(req.body.price !== undefined && {
-        price: Number(req.body.price),
-      }),
-      ...(req.body.isActive !== undefined && {
-        isActive: toBoolean(req.body.isActive),
-      }),
-      ...(req.body.isFeatured !== undefined && {
-        isFeatured: toBoolean(req.body.isFeatured),
-      }),
-      ...(authors && { authors }),
-    };
-
-    if (req.file) {
-      updateData.coverImage = `/uploads/books/${req.file.filename}`;
-    }
-
-    const book = await Book.findByIdAndUpdate(id, updateData, {
-      new: true,
+    res.status(500).json({
+      message: "Failed to update active status",
     });
-
-    if (!book) {
-      return res.status(404).json({ message: "Book not found" });
-    }
-
-    res.json(book);
-  } catch (error) {
-    console.error("Update Book Error:", error);
-    res.status(500).json({ message: error.message });
-  }
-};
-
-/* =====================================================
-   ADMIN: DELETE BOOK
-===================================================== */
-exports.deleteBook = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "Invalid book id" });
-    }
-
-    const book = await Book.findByIdAndDelete(id);
-
-    if (!book) {
-      return res.status(404).json({ message: "Book not found" });
-    }
-
-    res.json({ message: "Book deleted successfully" });
-  } catch (error) {
-    console.error("Delete Book Error:", error);
-    res.status(500).json({ message: "Failed to delete book" });
   }
 };

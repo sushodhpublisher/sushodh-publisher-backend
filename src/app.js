@@ -1,7 +1,5 @@
 const express = require("express");
 const cors = require("cors");
-const path = require("path");
-const fs = require("fs");
 const multer = require("multer");
 
 const app = express();
@@ -17,7 +15,6 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: function (origin, callback) {
-      // allow server-to-server / Postman / curl
       if (!origin) return callback(null, true);
 
       if (allowedOrigins.includes(origin)) {
@@ -36,24 +33,6 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-/* ================= STATIC FILES (UPLOADS) ================= */
-
-const uploadPath = path.join(__dirname, "..", "uploads");
-const booksUploadPath = path.join(uploadPath, "books");
-
-/* ENSURE UPLOAD DIRECTORIES EXIST (PRODUCTION SAFE) */
-if (!fs.existsSync(uploadPath)) {
-  fs.mkdirSync(uploadPath);
-}
-
-if (!fs.existsSync(booksUploadPath)) {
-  fs.mkdirSync(booksUploadPath);
-}
-
-/* Serve uploads */
-app.use("/uploads", express.static(uploadPath));
-console.log("Serving uploads from:", uploadPath);
-
 /* ================= ROUTES ================= */
 app.use("/api/auth", require("./routes/auth.routes"));
 app.use("/api/books", require("./routes/book.routes"));
@@ -63,7 +42,6 @@ app.use("/api/contact", require("./routes/contact.routes"));
 
 /* ================= GLOBAL ERROR HANDLER ================= */
 app.use((err, req, res, next) => {
-  // Multer (file upload) errors → JSON
   if (err instanceof multer.MulterError) {
     return res.status(400).json({
       message:
@@ -72,7 +50,6 @@ app.use((err, req, res, next) => {
     });
   }
 
-  // Custom errors (like fileFilter)
   if (err && err.message) {
     return res.status(400).json({ message: err.message });
   }

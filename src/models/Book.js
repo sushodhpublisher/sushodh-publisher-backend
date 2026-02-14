@@ -27,7 +27,13 @@ const bookSchema = new mongoose.Schema(
       required: true,
     },
 
+    /* ================= CLOUDINARY IMAGE ================= */
     coverImage: {
+      type: String,
+      default: "",
+    },
+
+    coverImagePublicId: {
       type: String,
       default: "",
     },
@@ -64,11 +70,5 @@ const bookSchema = new mongoose.Schema(
 bookSchema.index({ isActive: 1 });
 bookSchema.index({ isFeatured: 1 });
 bookSchema.index({ isActive: 1, isFeatured: 1 });
-
-/*
-  IMPORTANT:
-  Slug is generated & normalized in controller using slugify.
-  Do NOT mutate slug here to avoid collisions.
-*/
 
 module.exports = mongoose.model("Book", bookSchema);
