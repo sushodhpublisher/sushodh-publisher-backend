@@ -108,8 +108,10 @@ exports.createBook = async (req, res) => {
     res.status(201).json(book);
   } catch (error) {
     console.error("Create Book Error:", error);
+
     res.status(500).json({
-      message: "Server error while creating book",
+      message: error.message,
+      stack: error.stack, // temporary
     });
   }
 };
