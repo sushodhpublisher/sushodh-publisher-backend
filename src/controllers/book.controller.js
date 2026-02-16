@@ -52,90 +52,13 @@ const uploadToCloudinary = async (fileBuffer) => {
    ADMIN: CREATE BOOK
 ===================================================== */
 
-// old code exports.createBook = async (req, res) => {
-//   try {
-//     console.log("ENV TEST START");
-//     console.log("CLOUDINARY_CLOUD_NAME:", process.env.CLOUDINARY_CLOUD_NAME);
-//     console.log("CLOUDINARY_API_KEY:", process.env.CLOUDINARY_API_KEY);
-//     console.log("CLOUDINARY_API_SECRET:", process.env.CLOUDINARY_API_SECRET);
-//     console.log("ENV TEST END");
-//     const { title, description, price } = req.body;
-
-//     if (!title || !description || !price) {
-//       return res.status(400).json({
-//         message: "Title, description and price are required",
-//       });
-//     }
-
-//     const numericPrice = Number(price);
-//     if (isNaN(numericPrice)) {
-//       return res.status(400).json({
-//         message: "Price must be a valid number",
-//       });
-//     }
-
-//     const authors = parseAuthors(req.body.authors);
-
-//     if (!authors.length) {
-//       return res.status(400).json({
-//         message: "At least 1 valid author is required",
-//       });
-//     }
-
-//     let coverImage = "";
-//     let coverImagePublicId = "";
-
-//     if (req.file) {
-//       const uploadResult = await uploadToCloudinary(req.file.buffer);
-//       coverImage = uploadResult.secure_url;
-//       coverImagePublicId = uploadResult.public_id;
-//     }
-
-//     const baseSlug = slugify(title, {
-//       lower: true,
-//       strict: true,
-//     });
-
-//     const slug = `${baseSlug}-${Date.now().toString().slice(-5)}`;
-
-//     const book = await Book.create({
-//       title,
-//       slug,
-//       price: numericPrice,
-//       description,
-//       isActive: toBoolean(req.body.isActive),
-//       isFeatured: toBoolean(req.body.isFeatured),
-//       authors,
-//       coverImage,
-//       coverImagePublicId,
-//     });
-
-//     res.status(201).json(book);
-//   } catch (error) {
-//     console.error("Create Book Error:", error);
-
-//     res.status(500).json({
-//       message: error.message,
-//       stack: error.stack, // temporary
-//     });
-//   }
-// };
-
 exports.createBook = async (req, res) => {
   try {
-    console.log("========== CREATE BOOK START ==========");
-
-    // ✅ ENV check (safe logging)
-    console.log(
-      "CLOUDINARY_CLOUD_NAME exists:",
-      !!process.env.CLOUDINARY_CLOUD_NAME,
-    );
-    console.log("CLOUDINARY_API_KEY exists:", !!process.env.CLOUDINARY_API_KEY);
-    console.log(
-      "CLOUDINARY_API_SECRET exists:",
-      !!process.env.CLOUDINARY_API_SECRET,
-    );
-
+    console.log("ENV TEST START");
+    console.log("CLOUDINARY_CLOUD_NAME:", process.env.CLOUDINARY_CLOUD_NAME);
+    console.log("CLOUDINARY_API_KEY:", process.env.CLOUDINARY_API_KEY);
+    console.log("CLOUDINARY_API_SECRET:", process.env.CLOUDINARY_API_SECRET);
+    console.log("ENV TEST END");
     const { title, description, price } = req.body;
 
     if (!title || !description || !price) {
@@ -162,23 +85,10 @@ exports.createBook = async (req, res) => {
     let coverImage = "";
     let coverImagePublicId = "";
 
-    // ✅ IMAGE UPLOAD
     if (req.file) {
-      console.log("File received:", req.file.originalname);
-
       const uploadResult = await uploadToCloudinary(req.file.buffer);
-
-      if (!uploadResult || !uploadResult.secure_url) {
-        throw new Error("Cloudinary upload failed");
-      }
-
       coverImage = uploadResult.secure_url;
       coverImagePublicId = uploadResult.public_id;
-    } else {
-      console.log("No file received in request");
-      return res.status(400).json({
-        message: "Cover image is required",
-      });
     }
 
     const baseSlug = slugify(title, {
@@ -200,20 +110,110 @@ exports.createBook = async (req, res) => {
       coverImagePublicId,
     });
 
-    console.log("Book created successfully:", book._id);
-    console.log("========== CREATE BOOK END ==========");
-
-    return res.status(201).json(book);
+    res.status(201).json(book);
   } catch (error) {
-    console.error("========== CREATE BOOK ERROR ==========");
-    console.error(error);
-    console.error("=======================================");
+    console.error("Create Book Error:", error);
 
-    return res.status(500).json({
-      message: error.message || "Internal Server Error",
+    res.status(500).json({
+      message: error.message,
+      stack: error.stack, // temporary
     });
   }
 };
+
+// exports.createBook = async (req, res) => {
+//   try {
+//     console.log("========== CREATE BOOK START ==========");
+
+//     // ENV check (safe logging)
+//     console.log(
+//       "CLOUDINARY_CLOUD_NAME exists:",
+//       !!process.env.CLOUDINARY_CLOUD_NAME,
+//     );
+//     console.log("CLOUDINARY_API_KEY exists:", !!process.env.CLOUDINARY_API_KEY);
+//     console.log(
+//       "CLOUDINARY_API_SECRET exists:",
+//       !!process.env.CLOUDINARY_API_SECRET,
+//     );
+
+//     const { title, description, price } = req.body;
+
+//     if (!title || !description || !price) {
+//       return res.status(400).json({
+//         message: "Title, description and price are required",
+//       });
+//     }
+
+//     const numericPrice = Number(price);
+//     if (isNaN(numericPrice)) {
+//       return res.status(400).json({
+//         message: "Price must be a valid number",
+//       });
+//     }
+
+//     const authors = parseAuthors(req.body.authors);
+
+//     if (!authors.length) {
+//       return res.status(400).json({
+//         message: "At least 1 valid author is required",
+//       });
+//     }
+
+//     let coverImage = "";
+//     let coverImagePublicId = "";
+
+//     // IMAGE UPLOAD
+//     if (req.file) {
+//       console.log("File received:", req.file.originalname);
+
+//       const uploadResult = await uploadToCloudinary(req.file.buffer);
+
+//       if (!uploadResult || !uploadResult.secure_url) {
+//         throw new Error("Cloudinary upload failed");
+//       }
+
+//       coverImage = uploadResult.secure_url;
+//       coverImagePublicId = uploadResult.public_id;
+//     } else {
+//       console.log("No file received in request");
+//       return res.status(400).json({
+//         message: "Cover image is required",
+//       });
+//     }
+
+//     const baseSlug = slugify(title, {
+//       lower: true,
+//       strict: true,
+//     });
+
+//     const slug = `${baseSlug}-${Date.now().toString().slice(-5)}`;
+
+//     const book = await Book.create({
+//       title,
+//       slug,
+//       price: numericPrice,
+//       description,
+//       isActive: toBoolean(req.body.isActive),
+//       isFeatured: toBoolean(req.body.isFeatured),
+//       authors,
+//       coverImage,
+//       coverImagePublicId,
+//     });
+
+//     console.log("Book created successfully:", book._id);
+//     console.log("========== CREATE BOOK END ==========");
+
+//     return res.status(201).json(book);
+//   } catch (error) {
+//     console.error("========== CREATE BOOK ERROR ==========");
+//     console.error(error);
+//     console.error("=======================================");
+
+//     return res.status(500).json({
+//       message: error.message || "Internal Server Error",
+//     });
+//   }
+// };
 
 /* =====================================================
    ADMIN: UPDATE BOOK
