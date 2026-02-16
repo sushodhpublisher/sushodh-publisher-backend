@@ -86,9 +86,17 @@ exports.createBook = async (req, res) => {
     let coverImagePublicId = "";
 
     if (req.file) {
-      const uploadResult = await uploadToCloudinary(req.file.buffer);
-      coverImage = uploadResult.secure_url;
-      coverImagePublicId = uploadResult.public_id;
+      try {
+        const uploadResult = await uploadToCloudinary(req.file.buffer);
+        coverImage = uploadResult.secure_url;
+        coverImagePublicId = uploadResult.public_id;
+      } catch (err) {
+        console.error("Cloudinary Upload Failed:", err);
+        return res.status(500).json({
+          message: "Cloudinary upload failed",
+          error: err.message,
+        });
+      }
     }
 
     const baseSlug = slugify(title, {
@@ -116,7 +124,7 @@ exports.createBook = async (req, res) => {
 
     res.status(500).json({
       message: error.message,
-      stack: error.stack, // temporary
+      error: error.toString(),
     });
   }
 };
