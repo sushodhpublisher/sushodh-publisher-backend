@@ -1,5 +1,4 @@
 require("dotenv").config();
-console.log("ENV LOADED:", process.env.CLOUDINARY_API_KEY);
 const app = require("./app");
 const connectDB = require("./config/db");
 

@@ -66,6 +66,9 @@ exports.createBook = async (req, res) => {
     console.log("CLOUDINARY_API_KEY:", process.env.CLOUDINARY_API_KEY);
     console.log("CLOUDINARY_API_SECRET:", process.env.CLOUDINARY_API_SECRET);
     console.log("ENV TEST END");
+
+    console.log("ENV KEYS:", Object.keys(process.env));
+
     const { title, description, price } = req.body;
 
     if (!title || !description || !price) {
