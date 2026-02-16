@@ -35,22 +35,21 @@ const parseAuthors = (rawAuthors) => {
 };
 
 const uploadToCloudinary = async (fileBuffer) => {
-  return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
+  try {
+    const base64 = fileBuffer.toString("base64");
+
+    const result = await cloudinary.uploader.upload(
+      `data:image/jpeg;base64,${base64}`,
       {
         folder: "sushodh-books",
       },
-      (error, result) => {
-        if (error) {
-          console.error("Cloudinary Upload Error:", error);
-          return reject(error);
-        }
-        resolve(result);
-      },
     );
 
-    stream.end(fileBuffer);
-  });
+    return result;
+  } catch (error) {
+    console.error("Cloudinary Upload Error:", error);
+    throw error;
+  }
 };
 
 /* =====================================================
@@ -100,7 +99,7 @@ exports.createBook = async (req, res) => {
         coverImagePublicId = uploadResult.public_id;
       } catch (error) {
         console.error("FULL CLOUDINARY ERROR OBJECT:", error);
-        res.status(500).json({
+        return res.status(500).json({
           message: error.message,
           fullError: error,
         });
