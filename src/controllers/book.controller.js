@@ -35,10 +35,6 @@ const parseAuthors = (rawAuthors) => {
 };
 
 const uploadToCloudinary = async (fileBuffer) => {
-  if (!process.env.CLOUDINARY_CLOUD_NAME) {
-    throw new Error("Cloudinary cloud name missing");
-  }
-
   try {
     const result = await cloudinary.uploader.upload(
       `data:image/jpeg;base64,${fileBuffer.toString("base64")}`,
