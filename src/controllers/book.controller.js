@@ -37,10 +37,13 @@ const parseAuthors = (rawAuthors) => {
 const uploadToCloudinary = (fileBuffer) => {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
-      { folder: "sushodh-books" },
+      {
+        folder: "sushodh-books",
+        resource_type: "image",
+      },
       (error, result) => {
         if (error) {
-          console.error("Cloudinary Error:", error);
+          console.error("Cloudinary FULL Error:", error);
           reject(error);
         } else {
           resolve(result);
@@ -94,11 +97,11 @@ exports.createBook = async (req, res) => {
         const uploadResult = await uploadToCloudinary(req.file.buffer);
         coverImage = uploadResult.secure_url;
         coverImagePublicId = uploadResult.public_id;
-      } catch (err) {
-        console.error("Cloudinary Upload Failed:", err);
-        return res.status(500).json({
-          message: "Cloudinary upload failed",
-          error: err.message,
+      } catch (error) {
+        console.error("FULL CLOUDINARY ERROR OBJECT:", error);
+        res.status(500).json({
+          message: error.message,
+          fullError: error,
         });
       }
     }
