@@ -60,6 +60,7 @@ exports.createBook = async (req, res) => {
   try {
     console.log("All ENV keys:", Object.keys(process.env));
     console.log("Cloud Name:", process.env.CLOUDINARY_CLOUD_NAME);
+    console.log("ENV KEYS:", Object.keys(process.env));
 
     const { title, description, price } = req.body;
 
