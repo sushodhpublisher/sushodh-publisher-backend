@@ -56,12 +56,10 @@ const uploadToCloudinary = async (fileBuffer) => {
    ADMIN: CREATE BOOK
 ===================================================== */
 
-console.log("All ENV keys:", Object.keys(process.env));
-console.log("Cloud Name:", process.env.CLOUDINARY_CLOUD_NAME);
-
 exports.createBook = async (req, res) => {
   try {
-    console.log("Incoming Body:", req.body);
+    console.log("All ENV keys:", Object.keys(process.env));
+    console.log("Cloud Name:", process.env.CLOUDINARY_CLOUD_NAME);
 
     const { title, description, price } = req.body;
 
