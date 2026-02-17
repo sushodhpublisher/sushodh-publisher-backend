@@ -6,6 +6,7 @@ const PORT = process.env.PORT || 5000;
 
 /* ================= START SERVER AFTER DB ================= */
 const startServer = async () => {
+  console.log("DEPLOY CHECK 17-FEB CONTACT FIX");
   try {
     await connectDB();
     app.listen(PORT, () => {

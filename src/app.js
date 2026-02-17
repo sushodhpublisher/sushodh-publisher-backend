@@ -11,6 +11,8 @@ const allowedOrigins = [
   "https://sushodh.com",
 ];
 
+console.log("SERVER VERSION 2026-02-17");
+
 app.use(
   cors({
     origin: function (origin, callback) {
