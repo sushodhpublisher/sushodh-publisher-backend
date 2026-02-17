@@ -1,6 +1,8 @@
 const axios = require("axios");
 
 exports.sendContactMail = async (req, res) => {
+  console.log("CONTACT CONTROLLER VERSION 2");
+
   try {
     const { name, email, message } = req.body;
 
