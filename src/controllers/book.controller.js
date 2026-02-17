@@ -34,16 +34,15 @@ const parseAuthors = (rawAuthors) => {
   return authors.map((a) => a.trim()).filter(Boolean);
 };
 
-const uploadToCloudinary = async (fileBuffer) => {
+const uploadToCloudinary = async (file) => {
   try {
-    const base64 = fileBuffer.toString("base64");
+    const base64 = file.buffer.toString("base64");
 
-    const result = await cloudinary.uploader.upload(
-      `data:image/jpeg;base64,${base64}`,
-      {
-        folder: "sushodh-books",
-      },
-    );
+    const dataURI = `data:${file.mimetype};base64,${base64}`;
+
+    const result = await cloudinary.uploader.upload(dataURI, {
+      folder: "sushodh-books",
+    });
 
     return result;
   } catch (error) {
@@ -94,7 +93,7 @@ exports.createBook = async (req, res) => {
 
     if (req.file) {
       try {
-        const uploadResult = await uploadToCloudinary(req.file.buffer);
+        const uploadResult = await uploadToCloudinary(req.file);
         coverImage = uploadResult.secure_url;
         coverImagePublicId = uploadResult.public_id;
       } catch (error) {
