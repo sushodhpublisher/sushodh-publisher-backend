@@ -34,21 +34,22 @@ const parseAuthors = (rawAuthors) => {
   return authors.map((a) => a.trim()).filter(Boolean);
 };
 
-const uploadToCloudinary = (fileBuffer) => {
-  return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      { folder: "sushodh-books" },
-      (error, result) => {
-        if (error) {
-          console.error("Cloudinary Stream Error:", error);
-          return reject(error);
-        }
-        resolve(result);
+const uploadToCloudinary = async (fileBuffer) => {
+  try {
+    const result = await cloudinary.uploader.upload(
+      `data:image/png;base64,${fileBuffer.toString("base64")}`,
+      {
+        folder: "sushodh-books",
+        upload_preset: "ml_default",
+        resource_type: "image",
       },
     );
 
-    stream.end(fileBuffer);
-  });
+    return result;
+  } catch (error) {
+    console.error("Cloudinary Upload Error FULL:", error);
+    throw error;
+  }
 };
 
 /* =====================================================
