@@ -36,7 +36,13 @@ const parseAuthors = (rawAuthors) => {
 
 exports.createBook = async (req, res) => {
   try {
-    const { title, description, price, coverImage } = req.body;
+    if (!req.body) {
+      return res.status(400).json({
+        message: "Request body is missing",
+      });
+    }
+
+    const { title, description, price, coverImage } = req.body || {};
 
     if (!title || !description || !price) {
       return res.status(400).json({
@@ -80,7 +86,7 @@ exports.createBook = async (req, res) => {
       isActive: toBoolean(req.body.isActive),
       isFeatured: toBoolean(req.body.isFeatured),
       authors,
-      coverImage, // 👈 URL from frontend
+      coverImage,
     });
 
     res.status(201).json(book);
