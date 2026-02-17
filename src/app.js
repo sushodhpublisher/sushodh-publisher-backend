@@ -1,6 +1,5 @@
 const express = require("express");
 const cors = require("cors");
-const multer = require("multer");
 
 const app = express();
 
@@ -43,14 +42,6 @@ app.use("/api/contact", require("./routes/contact.routes"));
 /* ================= GLOBAL ERROR HANDLER ================= */
 app.use((err, req, res, next) => {
   console.error("GLOBAL ERROR:", err);
-
-  if (err instanceof multer.MulterError) {
-    return res.status(400).json({
-      message:
-        err.message ||
-        "File upload error (only jpg, png, webp allowed, max 5MB)",
-    });
-  }
 
   if (err.message === "CORS not allowed") {
     return res.status(403).json({ message: "CORS blocked" });
