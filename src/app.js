@@ -42,6 +42,8 @@ app.use("/api/contact", require("./routes/contact.routes"));
 
 /* ================= GLOBAL ERROR HANDLER ================= */
 app.use((err, req, res, next) => {
+  console.error("GLOBAL ERROR:", err);
+
   if (err instanceof multer.MulterError) {
     return res.status(400).json({
       message:
@@ -50,21 +52,12 @@ app.use((err, req, res, next) => {
     });
   }
 
-  if (err && err.message) {
-    return res.status(400).json({ message: err.message });
-  }
-
-  next(err);
-});
-
-/* ================= FINAL ERROR FALLBACK ================= */
-app.use((err, req, res, next) => {
   if (err.message === "CORS not allowed") {
     return res.status(403).json({ message: "CORS blocked" });
   }
 
   return res.status(500).json({
-    message: "Internal Server Error",
+    message: err.message || "Internal Server Error",
   });
 });
 
