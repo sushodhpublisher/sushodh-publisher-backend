@@ -18,10 +18,10 @@ const userSchema = new mongoose.Schema(
       default: "admin",
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
-// ✅ SAFE password hashing (NO next usage)
+// SAFE password hashing (NO next usage)
 userSchema.pre("save", async function () {
   if (!this.isModified("password")) return;
 

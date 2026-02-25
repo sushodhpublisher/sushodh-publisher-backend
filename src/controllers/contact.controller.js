@@ -3,6 +3,9 @@ const axios = require("axios");
 exports.sendContactMail = async (req, res) => {
   console.log("CONTACT CONTROLLER VERSION 2");
   console.log("BREVO KEY:", process.env.BREVO_API_KEY);
+  console.log("BREVO KEY VALUE:", process.env.BREVO_API_KEY);
+  console.log("BREVO KEY LENGTH:", process.env.BREVO_API_KEY?.length);
+
   try {
     const { name, email, message } = req.body;
 

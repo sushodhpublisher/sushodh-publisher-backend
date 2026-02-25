@@ -14,7 +14,7 @@ async function createAdmin() {
     const adminExists = await User.findOne({ email });
 
     if (adminExists) {
-      console.log("✅ Admin already exists:", adminExists.email);
+      console.log("Admin already exists:", adminExists.email);
       await mongoose.disconnect();
       process.exit(0);
     }
@@ -25,12 +25,12 @@ async function createAdmin() {
       role: "admin",
     });
 
-    console.log("✅ Admin created successfully:", admin.email);
+    console.log("Admin created successfully:", admin.email);
 
     await mongoose.disconnect();
     process.exit(0);
   } catch (error) {
-    console.error("❌ Error creating admin:", error.message);
+    console.error("Error creating admin:", error.message);
     process.exit(1);
   }
 }
