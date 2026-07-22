@@ -1,13 +1,14 @@
 require("dotenv").config();
 const app = require("./app");
 const connectDB = require("./config/db");
+const validateEnvironment = require("./config/env");
 
 const PORT = process.env.PORT || 5000;
 
 /* ================= START SERVER AFTER DB ================= */
 const startServer = async () => {
-  console.log("DEPLOY CHECK 17-FEB CONTACT FIX");
   try {
+    validateEnvironment();
     await connectDB();
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);

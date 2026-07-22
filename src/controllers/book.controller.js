@@ -1,6 +1,9 @@
 const Book = require("../models/Book");
 const slugify = require("slugify");
 const mongoose = require("mongoose");
+const cloudinary = require("../config/cloudinary");
+
+const CLOUDINARY_UPLOAD_TIMEOUT_MS = 30000;
 
 /* ================= HELPERS ================= */
 const toBoolean = (val) => val === true || val === "true";
@@ -10,6 +13,7 @@ const parseAuthors = (rawAuthors) => {
 
   if (!rawAuthors) return [];
 
+  // If string → try JSON parse
   if (typeof rawAuthors === "string") {
     try {
       const parsed = JSON.parse(rawAuthors);
@@ -19,10 +23,12 @@ const parseAuthors = (rawAuthors) => {
         authors = [rawAuthors];
       }
     } catch {
+      // fallback: comma separated string
       authors = rawAuthors.split(",");
     }
   }
 
+  // If already array (rare but possible)
   if (Array.isArray(rawAuthors)) {
     authors = rawAuthors;
   }
@@ -30,29 +36,44 @@ const parseAuthors = (rawAuthors) => {
   return authors.map((a) => a.trim()).filter(Boolean);
 };
 
+const uploadToCloudinary = (fileBuffer) => {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    let timeoutId;
+
+    const stream = cloudinary.uploader.upload_stream(
+      { folder: "sushodh-books" },
+      (error, result) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutId);
+
+        if (error) reject(error);
+        else resolve(result);
+      },
+    );
+
+    timeoutId = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      stream.destroy();
+      reject(new Error("Cover upload timed out. Please try again."));
+    }, CLOUDINARY_UPLOAD_TIMEOUT_MS);
+
+    stream.end(fileBuffer);
+  });
+};
+
 /* =====================================================
    ADMIN: CREATE BOOK
 ===================================================== */
-
 exports.createBook = async (req, res) => {
   try {
-    if (!req.body) {
-      return res.status(400).json({
-        message: "Request body is missing",
-      });
-    }
-
-    const { title, description, price, coverImage } = req.body || {};
+    const { title, description, price } = req.body;
 
     if (!title || !description || !price) {
       return res.status(400).json({
         message: "Title, description and price are required",
-      });
-    }
-
-    if (!coverImage) {
-      return res.status(400).json({
-        message: "Cover image is required",
       });
     }
 
@@ -71,6 +92,15 @@ exports.createBook = async (req, res) => {
       });
     }
 
+    let coverImage = "";
+    let coverImagePublicId = "";
+
+    if (req.file) {
+      const uploadResult = await uploadToCloudinary(req.file.buffer);
+      coverImage = uploadResult.secure_url;
+      coverImagePublicId = uploadResult.public_id;
+    }
+
     const baseSlug = slugify(title, {
       lower: true,
       strict: true,
@@ -87,13 +117,17 @@ exports.createBook = async (req, res) => {
       isFeatured: toBoolean(req.body.isFeatured),
       authors,
       coverImage,
+      coverImagePublicId,
     });
 
     res.status(201).json(book);
   } catch (error) {
     console.error("Create Book Error:", error);
     res.status(500).json({
-      message: error.message || "Server error while saving book",
+      message:
+        error.message === "Cover upload timed out. Please try again."
+          ? error.message
+          : "Server error while creating book",
     });
   }
 };
@@ -101,7 +135,6 @@ exports.createBook = async (req, res) => {
 /* =====================================================
    ADMIN: UPDATE BOOK
 ===================================================== */
-
 exports.updateBook = async (req, res) => {
   try {
     const { id } = req.params;
@@ -155,19 +188,37 @@ exports.updateBook = async (req, res) => {
       updateData.authors = authors;
     }
 
-    if (req.body.coverImage) {
-      updateData.coverImage = req.body.coverImage;
+    const oldCoverImagePublicId = req.file
+      ? existingBook.coverImagePublicId
+      : null;
+
+    if (req.file) {
+      const uploadResult = await uploadToCloudinary(req.file.buffer);
+
+      updateData.coverImage = uploadResult.secure_url;
+      updateData.coverImagePublicId = uploadResult.public_id;
     }
 
     const updatedBook = await Book.findByIdAndUpdate(id, updateData, {
       new: true,
     });
 
+    if (oldCoverImagePublicId) {
+      try {
+        await cloudinary.uploader.destroy(oldCoverImagePublicId);
+      } catch (err) {
+        console.error("Cloudinary delete failed:", err.message);
+      }
+    }
+
     res.status(200).json(updatedBook);
   } catch (error) {
     console.error("Update Book Error:", error);
     res.status(500).json({
-      message: "Server error while updating book",
+      message:
+        error.message === "Cover upload timed out. Please try again."
+          ? error.message
+          : "Server error while updating book",
     });
   }
 };
@@ -175,7 +226,6 @@ exports.updateBook = async (req, res) => {
 /* =====================================================
    ADMIN: DELETE BOOK
 ===================================================== */
-
 exports.deleteBook = async (req, res) => {
   try {
     const { id } = req.params;
@@ -187,6 +237,14 @@ exports.deleteBook = async (req, res) => {
     const book = await Book.findById(id);
     if (!book) {
       return res.status(404).json({ message: "Book not found" });
+    }
+
+    if (book.coverImagePublicId) {
+      try {
+        await cloudinary.uploader.destroy(book.coverImagePublicId);
+      } catch (err) {
+        console.error("Cloudinary delete failed:", err.message);
+      }
     }
 
     await Book.findByIdAndDelete(id);
@@ -203,7 +261,6 @@ exports.deleteBook = async (req, res) => {
 /* =====================================================
    ADMIN: GET ALL BOOKS
 ===================================================== */
-
 exports.getAllBooksForAdmin = async (req, res) => {
   try {
     res.set("Cache-Control", "no-store");
@@ -220,7 +277,6 @@ exports.getAllBooksForAdmin = async (req, res) => {
 /* =====================================================
    ADMIN: GET BOOK BY ID
 ===================================================== */
-
 exports.getBookByIdForAdmin = async (req, res) => {
   try {
     const { id } = req.params;
@@ -245,9 +301,54 @@ exports.getBookByIdForAdmin = async (req, res) => {
 };
 
 /* =====================================================
+   PUBLIC APIs (unchanged logic)
+===================================================== */
+exports.getAllBooks = async (req, res) => {
+  try {
+    const books = await Book.find({ isActive: true })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.status(200).json(books);
+  } catch {
+    res.status(500).json({ message: "Failed to fetch books" });
+  }
+};
+
+exports.getBookBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    const book = await Book.findOne({ slug, isActive: true }).lean();
+
+    if (!book) {
+      return res.status(404).json({ message: "Book not found" });
+    }
+
+    res.status(200).json(book);
+  } catch {
+    res.status(500).json({ message: "Failed to fetch book" });
+  }
+};
+
+exports.getFeaturedBooks = async (req, res) => {
+  try {
+    const books = await Book.find({
+      isActive: true,
+      isFeatured: true,
+    })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.status(200).json(books);
+  } catch {
+    res.status(500).json({ message: "Failed to fetch featured books" });
+  }
+};
+
+/* =====================================================
    ADMIN: TOGGLE FEATURED
 ===================================================== */
-
 exports.toggleFeaturedBook = async (req, res) => {
   try {
     const { id } = req.params;
@@ -293,7 +394,6 @@ exports.toggleFeaturedBook = async (req, res) => {
 /* =====================================================
    ADMIN: TOGGLE ACTIVE
 ===================================================== */
-
 exports.toggleActiveBook = async (req, res) => {
   try {
     const { id } = req.params;
@@ -336,52 +436,5 @@ exports.toggleActiveBook = async (req, res) => {
     res.status(500).json({
       message: "Failed to update active status",
     });
-  }
-};
-
-/* =====================================================
-   PUBLIC APIs
-===================================================== */
-
-exports.getAllBooks = async (req, res) => {
-  try {
-    const books = await Book.find({ isActive: true })
-      .sort({ createdAt: -1 })
-      .lean();
-
-    res.status(200).json(books);
-  } catch {
-    res.status(500).json({ message: "Failed to fetch books" });
-  }
-};
-
-exports.getBookBySlug = async (req, res) => {
-  try {
-    const { slug } = req.params;
-
-    const book = await Book.findOne({ slug, isActive: true }).lean();
-
-    if (!book) {
-      return res.status(404).json({ message: "Book not found" });
-    }
-
-    res.status(200).json(book);
-  } catch {
-    res.status(500).json({ message: "Failed to fetch book" });
-  }
-};
-
-exports.getFeaturedBooks = async (req, res) => {
-  try {
-    const books = await Book.find({
-      isActive: true,
-      isFeatured: true,
-    })
-      .sort({ createdAt: -1 })
-      .lean();
-
-    res.status(200).json(books);
-  } catch {
-    res.status(500).json({ message: "Failed to fetch featured books" });
   }
 };

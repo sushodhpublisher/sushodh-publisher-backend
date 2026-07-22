@@ -10,6 +10,7 @@ const {
 } = require("../controllers/book.controller");
 
 const { verifyToken, isAdmin } = require("../middleware/auth.middleware");
+const upload = require("../middleware/upload.middleware");
 
 const router = express.Router();
 
@@ -19,7 +20,7 @@ router.get(
   verifyToken,
   isAdmin,
   (req, res, next) => {
-    res.set("Cache-Control", "no-store");
+    res.set("Cache-Control", "no-store"); // ensure fresh admin data
     next();
   },
   getAllBooksForAdmin,
@@ -29,10 +30,22 @@ router.get(
 router.get("/books/:id", verifyToken, isAdmin, getBookByIdForAdmin);
 
 /* ================= ADMIN: CREATE BOOK ================= */
-router.post("/books", verifyToken, isAdmin, createBook);
+router.post(
+  "/books",
+  verifyToken,
+  isAdmin,
+  upload.single("coverImage"),
+  createBook,
+);
 
 /* ================= ADMIN: UPDATE BOOK ================= */
-router.put("/books/:id", verifyToken, isAdmin, updateBook);
+router.put(
+  "/books/:id",
+  verifyToken,
+  isAdmin,
+  upload.single("coverImage"),
+  updateBook,
+);
 
 /* ================= ADMIN: TOGGLE FEATURED ================= */
 router.patch("/books/:id/featured", verifyToken, isAdmin, toggleFeaturedBook);

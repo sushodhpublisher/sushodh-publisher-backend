@@ -1,7 +1,11 @@
 const express = require("express");
 const cors = require("cors");
+const multer = require("multer");
 
 const app = express();
+
+// Production API is expected to run behind one reverse proxy/load balancer.
+app.set("trust proxy", 1);
 
 /* ================= CORS (PRODUCTION + LOCAL SAFE) ================= */
 const allowedOrigins = [
@@ -11,14 +15,25 @@ const allowedOrigins = [
   "https://sushodh.com",
 ];
 
-console.log("SERVER VERSION 2026-02-17");
+const isAllowedVercelPreview = (origin) => {
+  try {
+    const { protocol, hostname } = new URL(origin);
+    return (
+      protocol === "https:" &&
+      hostname.endsWith(".vercel.app") &&
+      hostname.startsWith("sushodh-publisher-frontend")
+    );
+  } catch {
+    return false;
+  }
+};
 
 app.use(
   cors({
     origin: function (origin, callback) {
       if (!origin) return callback(null, true);
 
-      if (allowedOrigins.includes(origin)) {
+      if (allowedOrigins.includes(origin) || isAllowedVercelPreview(origin)) {
         return callback(null, true);
       }
 
@@ -43,14 +58,29 @@ app.use("/api/contact", require("./routes/contact.routes"));
 
 /* ================= GLOBAL ERROR HANDLER ================= */
 app.use((err, req, res, next) => {
-  console.error("GLOBAL ERROR:", err);
+  if (err instanceof multer.MulterError) {
+    return res.status(400).json({
+      message:
+        err.message ||
+        "File upload error (only jpg, png, webp allowed, max 5MB)",
+    });
+  }
 
+  if (err && err.message) {
+    return res.status(400).json({ message: err.message });
+  }
+
+  next(err);
+});
+
+/* ================= FINAL ERROR FALLBACK ================= */
+app.use((err, req, res, next) => {
   if (err.message === "CORS not allowed") {
     return res.status(403).json({ message: "CORS blocked" });
   }
 
   return res.status(500).json({
-    message: err.message || "Internal Server Error",
+    message: "Internal Server Error",
   });
 });
 
