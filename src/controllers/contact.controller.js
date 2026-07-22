@@ -8,14 +8,16 @@ exports.sendContactMail = async (req, res) => {
       return res.status(400).json({ message: "All fields are required" });
     }
 
+    const contactEmail = process.env.CONTACT_EMAIL;
+
     await axios.post(
       "https://api.brevo.com/v3/smtp/email",
       {
         sender: {
           name: "Sushodh Publisher",
-          email: "sushodhpublisher@gmail.com",
+          email: contactEmail,
         },
-        to: [{ email: "sushodhpublisher@gmail.com" }],
+        to: [{ email: contactEmail }],
         replyTo: { email },
         subject: `New Contact Message from ${name}`,
         htmlContent: `

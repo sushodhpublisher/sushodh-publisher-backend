@@ -4,6 +4,9 @@ const multer = require("multer");
 
 const app = express();
 
+// Production API is expected to run behind one reverse proxy/load balancer.
+app.set("trust proxy", 1);
+
 /* ================= CORS (PRODUCTION + LOCAL SAFE) ================= */
 const allowedOrigins = [
   "http://localhost:3000",
@@ -12,12 +15,25 @@ const allowedOrigins = [
   "https://sushodh.com",
 ];
 
+const isAllowedVercelPreview = (origin) => {
+  try {
+    const { protocol, hostname } = new URL(origin);
+    return (
+      protocol === "https:" &&
+      hostname.endsWith(".vercel.app") &&
+      hostname.startsWith("sushodh-publisher-frontend")
+    );
+  } catch {
+    return false;
+  }
+};
+
 app.use(
   cors({
     origin: function (origin, callback) {
       if (!origin) return callback(null, true);
 
-      if (allowedOrigins.includes(origin)) {
+      if (allowedOrigins.includes(origin) || isAllowedVercelPreview(origin)) {
         return callback(null, true);
       }
 

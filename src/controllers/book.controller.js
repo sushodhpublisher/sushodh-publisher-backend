@@ -3,6 +3,8 @@ const slugify = require("slugify");
 const mongoose = require("mongoose");
 const cloudinary = require("../config/cloudinary");
 
+const CLOUDINARY_UPLOAD_TIMEOUT_MS = 30000;
+
 /* ================= HELPERS ================= */
 const toBoolean = (val) => val === true || val === "true";
 
@@ -36,13 +38,28 @@ const parseAuthors = (rawAuthors) => {
 
 const uploadToCloudinary = (fileBuffer) => {
   return new Promise((resolve, reject) => {
+    let settled = false;
+    let timeoutId;
+
     const stream = cloudinary.uploader.upload_stream(
       { folder: "sushodh-books" },
       (error, result) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutId);
+
         if (error) reject(error);
         else resolve(result);
       },
     );
+
+    timeoutId = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      stream.destroy();
+      reject(new Error("Cover upload timed out. Please try again."));
+    }, CLOUDINARY_UPLOAD_TIMEOUT_MS);
+
     stream.end(fileBuffer);
   });
 };
@@ -52,8 +69,6 @@ const uploadToCloudinary = (fileBuffer) => {
 ===================================================== */
 exports.createBook = async (req, res) => {
   try {
-    console.log("Incoming Body:", req.body);
-
     const { title, description, price } = req.body;
 
     if (!title || !description || !price) {
@@ -109,7 +124,10 @@ exports.createBook = async (req, res) => {
   } catch (error) {
     console.error("Create Book Error:", error);
     res.status(500).json({
-      message: "Server error while creating book",
+      message:
+        error.message === "Cover upload timed out. Please try again."
+          ? error.message
+          : "Server error while creating book",
     });
   }
 };
@@ -170,16 +188,11 @@ exports.updateBook = async (req, res) => {
       updateData.authors = authors;
     }
 
-    if (req.file) {
-      // Delete old image if exists
-      if (existingBook.coverImagePublicId) {
-        try {
-          await cloudinary.uploader.destroy(existingBook.coverImagePublicId);
-        } catch (err) {
-          console.error("Cloudinary delete failed:", err.message);
-        }
-      }
+    const oldCoverImagePublicId = req.file
+      ? existingBook.coverImagePublicId
+      : null;
 
+    if (req.file) {
       const uploadResult = await uploadToCloudinary(req.file.buffer);
 
       updateData.coverImage = uploadResult.secure_url;
@@ -190,11 +203,22 @@ exports.updateBook = async (req, res) => {
       new: true,
     });
 
+    if (oldCoverImagePublicId) {
+      try {
+        await cloudinary.uploader.destroy(oldCoverImagePublicId);
+      } catch (err) {
+        console.error("Cloudinary delete failed:", err.message);
+      }
+    }
+
     res.status(200).json(updatedBook);
   } catch (error) {
     console.error("Update Book Error:", error);
     res.status(500).json({
-      message: "Server error while updating book",
+      message:
+        error.message === "Cover upload timed out. Please try again."
+          ? error.message
+          : "Server error while updating book",
     });
   }
 };
